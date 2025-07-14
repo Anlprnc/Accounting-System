@@ -9,21 +9,20 @@ accounting_bp = Blueprint('accounting', __name__, url_prefix='/api/accounting')
 @token_required
 def get_financial_summary():
     """
-    Finansal özet raporu endpoint'i
-    Query parametreleri: start_date, end_date (YYYY-MM-DD formatında)
+    Financial summary report endpoint
+    Query parameters: start_date, end_date (YYYY-MM-DD format)
     """
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
         
-        # Tarih validasyonu
         if start_date:
             try:
                 datetime.strptime(start_date, '%Y-%m-%d')
             except ValueError:
                 return jsonify({
                     'success': False,
-                    'message': 'Başlangıç tarihi YYYY-MM-DD formatında olmalıdır'
+                    'message': 'Start date must be in YYYY-MM-DD format'
                 }), 400
         
         if end_date:
@@ -32,7 +31,7 @@ def get_financial_summary():
             except ValueError:
                 return jsonify({
                     'success': False,
-                    'message': 'Bitiş tarihi YYYY-MM-DD formatında olmalıdır'
+                    'message': 'End date must be in YYYY-MM-DD format'
                 }), 400
         
         result = AccountingService.get_financial_summary(start_date, end_date)
@@ -45,29 +44,27 @@ def get_financial_summary():
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Finansal özet alınırken hata: {str(e)}'
+            'message': f'Error getting financial summary: {str(e)}'
         }), 500
 
 @accounting_bp.route('/monthly-report/<int:year>/<int:month>', methods=['GET'])
 @token_required
 def get_monthly_report(year, month):
     """
-    Aylık muhasebe raporu endpoint'i
+    Monthly accounting report endpoint
     """
     try:
-        # Ay validasyonu
         if month < 1 or month > 12:
             return jsonify({
                 'success': False,
-                'message': 'Ay 1-12 arasında olmalıdır'
+                'message': 'Month must be between 1 and 12'
             }), 400
         
-        # Yıl validasyonu
         current_year = datetime.now().year
         if year < 2000 or year > current_year + 10:
             return jsonify({
                 'success': False,
-                'message': f'Yıl 2000-{current_year + 10} arasında olmalıdır'
+                'message': f'Year must be between 2000 and {current_year + 10}'
             }), 400
         
         result = AccountingService.get_monthly_report(year, month)
@@ -80,24 +77,22 @@ def get_monthly_report(year, month):
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Aylık rapor alınırken hata: {str(e)}'
+            'message': f'Error getting monthly report: {str(e)}'
         }), 500
 
 @accounting_bp.route('/cash-flow', methods=['GET'])
 @token_required
 def get_cash_flow():
     """
-    Nakit akışı raporu endpoint'i
-    Query parametresi: period_days (varsayılan: 30)
+    Cash
     """
     try:
         period_days = request.args.get('period_days', 30, type=int)
         
-        # Periyot validasyonu
         if period_days < 1 or period_days > 365:
             return jsonify({
                 'success': False,
-                'message': 'Periyot 1-365 gün arasında olmalıdır'
+                'message': 'Period must be between 1 and 365 days'
             }), 400
         
         result = AccountingService.get_cash_flow(period_days)
@@ -110,15 +105,15 @@ def get_cash_flow():
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Nakit akışı raporu alınırken hata: {str(e)}'
+            'message': f'Error getting cash flow: {str(e)}'
         }), 500
 
 @accounting_bp.route('/customer-analysis', methods=['GET'])
 @token_required
 def get_customer_analysis():
     """
-    Müşteri finansal analizi endpoint'i
-    Query parametresi: customer_id (isteğe bağlı)
+    Customer financial analysis endpoint
+    Query parameter: customer_id (optional)
     """
     try:
         customer_id = request.args.get('customer_id', type=int)
@@ -128,19 +123,19 @@ def get_customer_analysis():
         if result['success']:
             return jsonify(result), 200
         else:
-            return jsonify(result), 404 if 'bulunamadı' in result.get('message', '') else 400
+            return jsonify(result), 404 if 'not found' in result.get('message', '') else 400
             
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Müşteri analizi alınırken hata: {str(e)}'
+            'message': f'Error getting customer analysis: {str(e)}'
         }), 500
 
 @accounting_bp.route('/customer-analysis/<int:customer_id>', methods=['GET'])
 @token_required
 def get_specific_customer_analysis(customer_id):
     """
-    Belirli müşteri finansal analizi endpoint'i
+    Specific customer financial analysis endpoint
     """
     try:
         result = AccountingService.get_customer_analysis(customer_id)
@@ -148,19 +143,19 @@ def get_specific_customer_analysis(customer_id):
         if result['success']:
             return jsonify(result), 200
         else:
-            return jsonify(result), 404 if 'bulunamadı' in result.get('message', '') else 400
+            return jsonify(result), 404 if 'not found' in result.get('message', '') else 400
             
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Müşteri analizi alınırken hata: {str(e)}'
+            'message': f'Error getting customer analysis: {str(e)}'
         }), 500
 
 @accounting_bp.route('/invoice-summary', methods=['GET'])
 @token_required
 def get_invoice_status_summary():
     """
-    Fatura durum özeti endpoint'i
+    Invoice status summary endpoint
     """
     try:
         result = AccountingService.get_invoice_status_summary()
@@ -173,28 +168,27 @@ def get_invoice_status_summary():
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Fatura özeti alınırken hata: {str(e)}'
+            'message': f'Error getting invoice status summary: {str(e)}'
         }), 500
 
 @accounting_bp.route('/profit-loss', methods=['GET'])
 @token_required
 def get_profit_loss_statement():
     """
-    Kar-zarar tablosu endpoint'i
-    Query parametreleri: start_date, end_date (YYYY-MM-DD formatında)
+    Profit and loss statement endpoint
+    Query parameters: start_date, end_date (YYYY-MM-DD format)
     """
     try:
         start_date = request.args.get('start_date')
         end_date = request.args.get('end_date')
         
-        # Tarih validasyonu
         if start_date:
             try:
                 datetime.strptime(start_date, '%Y-%m-%d')
             except ValueError:
                 return jsonify({
                     'success': False,
-                    'message': 'Başlangıç tarihi YYYY-MM-DD formatında olmalıdır'
+                    'message': 'Start date must be in YYYY-MM-DD format'
                 }), 400
         
         if end_date:
@@ -203,7 +197,7 @@ def get_profit_loss_statement():
             except ValueError:
                 return jsonify({
                     'success': False,
-                    'message': 'Bitiş tarihi YYYY-MM-DD formatında olmalıdır'
+                    'message': 'End date must be in YYYY-MM-DD format'
                 }), 400
         
         result = AccountingService.get_profit_loss_statement(start_date, end_date)
@@ -216,14 +210,14 @@ def get_profit_loss_statement():
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Kar-zarar tablosu alınırken hata: {str(e)}'
+            'message': f'Error getting profit and loss statement: {str(e)}'
         }), 500
 
 @accounting_bp.route('/transaction-summary', methods=['GET'])
 @token_required
 def get_transaction_summary_by_type():
     """
-    İşlem tipine göre özet endpoint'i
+    Transaction type summary endpoint
     """
     try:
         result = AccountingService.get_transaction_summary_by_type()
@@ -236,17 +230,16 @@ def get_transaction_summary_by_type():
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'İşlem özeti alınırken hata: {str(e)}'
+            'message': f'Error getting transaction summary: {str(e)}'
         }), 500
 
 @accounting_bp.route('/dashboard', methods=['GET'])
 @token_required
 def get_dashboard_data():
     """
-    Muhasebe dashboard'u için tüm temel verileri getiren endpoint
+    Accounting dashboard endpoint
     """
     try:
-        # Finansal özet (son 30 gün)
         end_date = datetime.now().date().isoformat()
         start_date = (datetime.now().date().replace(day=1)).isoformat()
         
@@ -274,33 +267,29 @@ def get_dashboard_data():
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Dashboard verileri alınırken hata: {str(e)}'
+            'message': f'Error getting dashboard data: {str(e)}'
         }), 500
 
 @accounting_bp.route('/reports/yearly/<int:year>', methods=['GET'])
 @token_required
 def get_yearly_report(year):
     """
-    Yıllık muhasebe raporu endpoint'i
+    Yearly accounting report endpoint
     """
     try:
-        # Yıl validasyonu
         current_year = datetime.now().year
         if year < 2000 or year > current_year + 10:
             return jsonify({
                 'success': False,
-                'message': f'Yıl 2000-{current_year + 10} arasında olmalıdır'
+                'message': f'Year must be between 2000 and {current_year + 10}'
             }), 400
         
-        # Yıl başı ve sonu tarihleri
         start_date = f"{year}-01-01"
         end_date = f"{year}-12-31"
         
-        # Yıllık veriler
         financial_summary = AccountingService.get_financial_summary(start_date, end_date)
         profit_loss = AccountingService.get_profit_loss_statement(start_date, end_date)
         
-        # Aylık breakdown
         monthly_data = []
         for month in range(1, 13):
             monthly_report = AccountingService.get_monthly_report(year, month)
@@ -326,16 +315,16 @@ def get_yearly_report(year):
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'Yıllık rapor alınırken hata: {str(e)}'
+            'message': f'Error getting yearly report: {str(e)}'
         }), 500
 
 @accounting_bp.route('/health', methods=['GET'])
 def health_check():
     """
-    Muhasebe servisi sağlık kontrolü
+    Accounting service health check
     """
     return jsonify({
         'success': True,
-        'message': 'Muhasebe servisi çalışıyor',
+        'message': 'Accounting service is running',
         'timestamp': datetime.now().isoformat()
     }), 200

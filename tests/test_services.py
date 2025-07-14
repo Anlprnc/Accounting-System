@@ -335,7 +335,6 @@ class TestAccountingServiceIntegration:
             
             assert result['success'] is True
             assert 'summary' in result
-            # Test data should have specific amounts based on conftest setup
             assert result['summary']['total_income'] >= 0
             assert result['summary']['total_expense'] >= 0
             assert 'net_profit' in result['summary']
@@ -347,7 +346,6 @@ class TestAccountingServiceIntegration:
             
             assert result['success'] is True
             assert 'analysis' in result
-            # Should have the 2 customers created in conftest
             assert result['analysis']['total_customers'] == 2
     
     def test_get_invoice_status_summary_integration(self, app):
@@ -358,7 +356,6 @@ class TestAccountingServiceIntegration:
             assert result['success'] is True
             assert 'invoice_summary' in result
             assert 'by_status' in result['invoice_summary']
-            # Should have both paid and pending invoices from test data
     
     def test_transaction_summary_integration(self, app):
         """Test transaction summary with real test data"""
@@ -367,4 +364,3 @@ class TestAccountingServiceIntegration:
             
             assert result['success'] is True
             assert 'transaction_summary' in result
-            # Should have both income and expense transactions from test data 

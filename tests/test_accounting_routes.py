@@ -352,13 +352,11 @@ class TestAccountingRoutes:
         for endpoint in endpoints:
             response = client.get(endpoint, headers=headers)
             assert response.status_code in [200, 404], f"Admin should access {endpoint}"
-            # 404 is acceptable for endpoints like customer-analysis/1 if customer doesn't exist
     
     def test_error_handling_for_service_failures(self, client, auth_headers):
         """Test error handling when service methods fail"""
         headers = auth_headers()
         
-        # Test with extreme date range that might cause issues
         response = client.get(
             '/api/accounting/cash-flow?period_days=0',
             headers=headers
@@ -386,19 +384,15 @@ class TestAccountingRoutes:
         """Test monthly report with boundary values"""
         headers = auth_headers()
         
-        # Test month 0
         response = client.get('/api/accounting/monthly-report/2024/0', headers=headers)
         assert response.status_code == 400
         
-        # Test month 1 (valid)
         response = client.get('/api/accounting/monthly-report/2024/1', headers=headers)
         assert response.status_code == 200
         
-        # Test month 12 (valid)
         response = client.get('/api/accounting/monthly-report/2024/12', headers=headers)
         assert response.status_code == 200
         
-        # Test month 13
         response = client.get('/api/accounting/monthly-report/2024/13', headers=headers)
         assert response.status_code == 400
     
@@ -406,19 +400,15 @@ class TestAccountingRoutes:
         """Test cash flow with boundary values"""
         headers = auth_headers()
         
-        # Test 0 days
         response = client.get('/api/accounting/cash-flow?period_days=0', headers=headers)
         assert response.status_code == 400
         
-        # Test 1 day (valid)
         response = client.get('/api/accounting/cash-flow?period_days=1', headers=headers)
         assert response.status_code == 200
         
-        # Test 365 days (valid)
         response = client.get('/api/accounting/cash-flow?period_days=365', headers=headers)
         assert response.status_code == 200
         
-        # Test 366 days
         response = client.get('/api/accounting/cash-flow?period_days=366', headers=headers)
         assert response.status_code == 400
     
@@ -432,8 +422,7 @@ class TestAccountingRoutes:
         data = response.get_json()
         
         dashboard = data['dashboard']
-        
-        # Check all required sections exist
+
         required_sections = [
             'financial_summary',
             'invoice_summary', 
@@ -445,7 +434,6 @@ class TestAccountingRoutes:
         for section in required_sections:
             assert section in dashboard, f"Dashboard missing {section}"
         
-        # Verify cash_flow_summary structure
         assert 'final_balance' in dashboard['cash_flow_summary']
         assert 'period_days' in dashboard['cash_flow_summary']
         assert dashboard['cash_flow_summary']['period_days'] == 30 
