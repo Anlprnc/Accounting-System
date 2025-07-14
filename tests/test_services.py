@@ -1,6 +1,10 @@
 import pytest
 from services.user_service import UserService
+from services.accounting_service import AccountingService
 from models.user import User, db
+from models.customer import Customer
+from models.invoice import Invoice
+from models.transaction import Transaction
 
 
 class TestUserService:
@@ -318,4 +322,49 @@ class TestUserService:
             
             result = UserService.search_users("nonexistent")
             assert result['success'] is True
-            assert len(result['users']) == 0 
+            assert len(result['users']) == 0
+
+
+class TestAccountingServiceIntegration:
+    """Integration tests for AccountingService using existing test data"""
+    
+    def test_get_financial_summary_with_test_data(self, app):
+        """Test financial summary with the test data from conftest"""
+        with app.app_context():
+            result = AccountingService.get_financial_summary()
+            
+            assert result['success'] is True
+            assert 'summary' in result
+            # Test data should have specific amounts based on conftest setup
+            assert result['summary']['total_income'] >= 0
+            assert result['summary']['total_expense'] >= 0
+            assert 'net_profit' in result['summary']
+    
+    def test_get_customer_analysis_integration(self, app):
+        """Test customer analysis with real test data"""
+        with app.app_context():
+            result = AccountingService.get_customer_analysis()
+            
+            assert result['success'] is True
+            assert 'analysis' in result
+            # Should have the 2 customers created in conftest
+            assert result['analysis']['total_customers'] == 2
+    
+    def test_get_invoice_status_summary_integration(self, app):
+        """Test invoice status summary with real test data"""
+        with app.app_context():
+            result = AccountingService.get_invoice_status_summary()
+            
+            assert result['success'] is True
+            assert 'invoice_summary' in result
+            assert 'by_status' in result['invoice_summary']
+            # Should have both paid and pending invoices from test data
+    
+    def test_transaction_summary_integration(self, app):
+        """Test transaction summary with real test data"""
+        with app.app_context():
+            result = AccountingService.get_transaction_summary_by_type()
+            
+            assert result['success'] is True
+            assert 'transaction_summary' in result
+            # Should have both income and expense transactions from test data 
