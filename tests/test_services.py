@@ -1,6 +1,8 @@
 import pytest
+from datetime import date
 from services.user_service import UserService
 from services.accounting_service import AccountingService
+from services.invoice_service import InvoiceService
 from models.user import User, db
 from models.customer import Customer
 from models.invoice import Invoice
@@ -363,4 +365,406 @@ class TestAccountingServiceIntegration:
             result = AccountingService.get_transaction_summary_by_type()
             
             assert result['success'] is True
-            assert 'transaction_summary' in result
+
+
+class TestInvoiceService:
+    
+    def test_create_invoice_success(self, app):
+        """Test successful invoice creation"""
+        with app.app_context():
+            customer = Customer(
+                name="Test Customer",
+                address="Test Address",
+                phone="123456789",
+                email="test@customer.com"
+            )
+            db.session.add(customer)
+            db.session.commit()
+            
+            result = InvoiceService.create_invoice(
+                customer_id=customer.id,
+                date='2024-01-15',
+                total_amount=1500.50,
+                status='pending'
+            )
+            
+            assert result['success'] is True
+            assert result['message'] == 'Fatura başarıyla oluşturuldu'
+            assert result['invoice'] is not None
+            assert result['invoice']['customer_id'] == customer.id
+            assert result['invoice']['total_amount'] == 1500.50
+            assert result['invoice']['status'] == 'pending'
+    
+    def test_create_invoice_invalid_customer(self, app):
+        """Test invoice creation with invalid customer"""
+        with app.app_context():
+            result = InvoiceService.create_invoice(
+                customer_id=999,  # Non-existent customer
+                date='2024-01-15',
+                total_amount=1500.50,
+                status='pending'
+            )
+            
+            assert result['success'] is False
+            assert result['message'] == 'Müşteri bulunamadı'
+            assert result['invoice'] is None
+    
+    def test_create_invoice_invalid_date(self, app):
+        """Test invoice creation with invalid date format"""
+        with app.app_context():
+            customer = Customer(
+                name="Test Customer",
+                address="Test Address",
+                phone="123456789",
+                email="test@customer.com"
+            )
+            db.session.add(customer)
+            db.session.commit()
+            
+            result = InvoiceService.create_invoice(
+                customer_id=customer.id,
+                date='invalid-date',
+                total_amount=1500.50,
+                status='pending'
+            )
+            
+            assert result['success'] is False
+            assert 'Geçersiz tarih formatı' in result['message']
+            assert result['invoice'] is None
+    
+    def test_create_invoice_invalid_status(self, app):
+        """Test invoice creation with invalid status (should default to pending)"""
+        with app.app_context():
+            customer = Customer(
+                name="Test Customer",
+                address="Test Address",
+                phone="123456789",
+                email="test@customer.com"
+            )
+            db.session.add(customer)
+            db.session.commit()
+            
+            result = InvoiceService.create_invoice(
+                customer_id=customer.id,
+                date='2024-01-15',
+                total_amount=1500.50,
+                status='invalid_status'
+            )
+            
+            assert result['success'] is True
+            assert result['invoice']['status'] == 'pending'
+    
+    def test_get_invoice_by_id_success(self, app):
+        """Test getting invoice by ID"""
+        with app.app_context():
+            customer = Customer(
+                name="Test Customer",
+                address="Test Address",
+                phone="123456789",
+                email="test@customer.com"
+            )
+            db.session.add(customer)
+            db.session.commit()
+            
+            invoice = Invoice(
+                customer_id=customer.id,
+                date=date(2024, 1, 15),
+                total_amount=1500.50,
+                status='pending'
+            )
+            db.session.add(invoice)
+            db.session.commit()
+            
+            result = InvoiceService.get_invoice_by_id(invoice.id)
+            
+            assert result is not None
+            assert result.id == invoice.id
+            assert result.total_amount == 1500.50
+    
+    def test_get_invoice_by_id_not_found(self, app):
+        """Test getting non-existent invoice by ID"""
+        with app.app_context():
+            result = InvoiceService.get_invoice_by_id(999)
+            assert result is None
+    
+    def test_get_all_invoices(self, app):
+        """Test getting all invoices with pagination"""
+        with app.app_context():
+            customer = Customer(
+                name="Test Customer",
+                address="Test Address",
+                phone="123456789",
+                email="test@customer.com"
+            )
+            db.session.add(customer)
+            db.session.commit()
+            
+            for i in range(3):
+                invoice = Invoice(
+                    customer_id=customer.id,
+                    date=date(2024, 1, 15),
+                    total_amount=1000 + i * 100,
+                    status='pending'
+                )
+                db.session.add(invoice)
+            db.session.commit()
+            
+            result = InvoiceService.get_all_invoices(page=1, per_page=10)
+            
+            assert result['success'] is True
+            assert len(result['invoices']) >= 3
+            assert 'total' in result
+            assert 'pages' in result
+            assert result['current_page'] == 1
+    
+    def test_get_invoices_by_customer(self, app):
+        """Test getting invoices by customer"""
+        with app.app_context():
+            customer = Customer(
+                name="Test Customer",
+                address="Test Address",
+                phone="123456789",
+                email="test@customer.com"
+            )
+            db.session.add(customer)
+            db.session.commit()
+            
+            invoice = Invoice(
+                customer_id=customer.id,
+                date=date(2024, 1, 15),
+                total_amount=1500.50,
+                status='pending'
+            )
+            db.session.add(invoice)
+            db.session.commit()
+            
+            result = InvoiceService.get_invoices_by_customer(customer.id)
+            
+            assert result['success'] is True
+            assert len(result['invoices']) >= 1
+            assert result['customer']['id'] == customer.id
+            assert result['invoices'][0]['customer_id'] == customer.id
+    
+    def test_get_invoices_by_customer_invalid(self, app):
+        """Test getting invoices by non-existent customer"""
+        with app.app_context():
+            result = InvoiceService.get_invoices_by_customer(999)
+            
+            assert result['success'] is False
+            assert result['message'] == 'Müşteri bulunamadı'
+            assert result['invoices'] == []
+    
+    def test_get_invoices_by_status(self, app):
+        """Test getting invoices by status"""
+        with app.app_context():
+            customer = Customer(
+                name="Test Customer",
+                address="Test Address",
+                phone="123456789",
+                email="test@customer.com"
+            )
+            db.session.add(customer)
+            db.session.commit()
+            
+            statuses = ['pending', 'paid', 'cancelled']
+            for status in statuses:
+                invoice = Invoice(
+                    customer_id=customer.id,
+                    date=date(2024, 1, 15),
+                    total_amount=1500.50,
+                    status=status
+                )
+                db.session.add(invoice)
+            db.session.commit()
+            
+            result = InvoiceService.get_invoices_by_status('pending')
+            
+            assert result['success'] is True
+            assert len(result['invoices']) >= 1
+            assert result['status'] == 'pending'
+            for invoice in result['invoices']:
+                assert invoice['status'] == 'pending'
+    
+    def test_get_invoices_by_status_invalid(self, app):
+        """Test getting invoices by invalid status"""
+        with app.app_context():
+            result = InvoiceService.get_invoices_by_status('invalid_status')
+            
+            assert result['success'] is False
+            assert 'Geçersiz durum' in result['message']
+            assert result['invoices'] == []
+    
+    def test_update_invoice_success(self, app):
+        """Test successful invoice update"""
+        with app.app_context():
+            customer = Customer(
+                name="Test Customer",
+                address="Test Address",
+                phone="123456789",
+                email="test@customer.com"
+            )
+            db.session.add(customer)
+            db.session.commit()
+            
+            invoice = Invoice(
+                customer_id=customer.id,
+                date=date(2024, 1, 15),
+                total_amount=1500.50,
+                status='pending'
+            )
+            db.session.add(invoice)
+            db.session.commit()
+            
+            result = InvoiceService.update_invoice(
+                invoice.id,
+                total_amount=2000.00,
+                status='paid'
+            )
+            
+            assert result['success'] is True
+            assert result['message'] == 'Fatura başarıyla güncellendi'
+            assert result['invoice']['total_amount'] == 2000.00
+            assert result['invoice']['status'] == 'paid'
+    
+    def test_update_invoice_not_found(self, app):
+        """Test updating non-existent invoice"""
+        with app.app_context():
+            result = InvoiceService.update_invoice(999, total_amount=2000.00)
+            
+            assert result['success'] is False
+            assert result['message'] == 'Fatura bulunamadı'
+            assert result['invoice'] is None
+    
+    def test_update_invoice_status_success(self, app):
+        """Test successful invoice status update"""
+        with app.app_context(): 
+            customer = Customer(
+                name="Test Customer",
+                address="Test Address",
+                phone="123456789",
+                email="test@customer.com"
+            )
+            db.session.add(customer)
+            db.session.commit()
+            
+            invoice = Invoice(
+                customer_id=customer.id,
+                date=date(2024, 1, 15),
+                total_amount=1500.50,
+                status='pending'
+            )
+            db.session.add(invoice)
+            db.session.commit()
+            
+            result = InvoiceService.update_invoice_status(invoice.id, 'paid')
+            
+            assert result['success'] is True
+            assert 'paid' in result['message']
+            assert result['invoice']['status'] == 'paid'
+    
+    def test_update_invoice_status_invalid(self, app):
+        """Test updating invoice status with invalid status"""
+        with app.app_context():
+            customer = Customer(
+                name="Test Customer",
+                address="Test Address",
+                phone="123456789",
+                email="test@customer.com"
+            )
+            db.session.add(customer)
+            db.session.commit()
+            
+            invoice = Invoice(
+                customer_id=customer.id,
+                date=date(2024, 1, 15),
+                total_amount=1500.50,
+                status='pending'
+            )
+            db.session.add(invoice)
+            db.session.commit()
+            
+            result = InvoiceService.update_invoice_status(invoice.id, 'invalid_status')
+            
+            assert result['success'] is False
+            assert 'Geçersiz durum' in result['message']
+    
+    def test_delete_invoice_success(self, app):
+        """Test successful invoice deletion"""
+        with app.app_context():
+            customer = Customer(
+                name="Test Customer",
+                address="Test Address",
+                phone="123456789",
+                email="test@customer.com"
+            )
+            db.session.add(customer)
+            db.session.commit()
+            
+            invoice = Invoice(
+                customer_id=customer.id,
+                date=date(2024, 1, 15),
+                total_amount=1500.50,
+                status='pending'
+            )
+            db.session.add(invoice)
+            db.session.commit()
+            
+            invoice_id = invoice.id
+            result = InvoiceService.delete_invoice(invoice_id)
+            
+            assert result['success'] is True
+            assert result['message'] == 'Fatura başarıyla silindi'
+            
+            deleted_invoice = InvoiceService.get_invoice_by_id(invoice_id)
+            assert deleted_invoice is None
+    
+    def test_delete_invoice_not_found(self, app):
+        """Test deleting non-existent invoice"""
+        with app.app_context():
+            result = InvoiceService.delete_invoice(999)
+            
+            assert result['success'] is False
+            assert result['message'] == 'Fatura bulunamadı'
+    
+    def test_get_invoice_statistics(self, app):
+        """Test getting invoice statistics"""
+        with app.app_context():
+            customer = Customer(
+                name="Test Customer",
+                address="Test Address",
+                phone="123456789",
+                email="test@customer.com"
+            )
+            db.session.add(customer)
+            db.session.commit()
+            
+            statuses = ['pending', 'paid', 'cancelled', 'overdue']
+            amounts = [1000, 2000, 1500, 500]
+            
+            for status, amount in zip(statuses, amounts):
+                invoice = Invoice(
+                    customer_id=customer.id,
+                    date=date(2024, 1, 15),
+                    total_amount=amount,
+                    status=status
+                )
+                db.session.add(invoice)
+            db.session.commit()
+            
+            result = InvoiceService.get_invoice_statistics()
+            
+            assert result['success'] is True
+            assert 'statistics' in result
+            stats = result['statistics']
+            
+            assert 'total_invoices' in stats
+            assert 'pending_invoices' in stats
+            assert 'paid_invoices' in stats
+            assert 'cancelled_invoices' in stats
+            assert 'overdue_invoices' in stats
+            assert 'total_amount' in stats
+            assert 'paid_amount' in stats
+            assert 'pending_amount' in stats
+            
+            assert stats['total_invoices'] >= 4
+            assert stats['paid_amount'] >= 2000

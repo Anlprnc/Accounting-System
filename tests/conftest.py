@@ -9,8 +9,9 @@ from models.transaction import Transaction
 from routes.auth_routes import auth_bp
 from routes.user_routes import user_bp
 from routes.accounting_routes import accounting_bp
+from routes.invoice_routes import invoice_bp
 from services.user_service import UserService
-from datetime import datetime, date
+from datetime import date
 
 
 @pytest.fixture
@@ -31,6 +32,7 @@ def app():
     app.register_blueprint(auth_bp)
     app.register_blueprint(user_bp)
     app.register_blueprint(accounting_bp)
+    app.register_blueprint(invoice_bp)
     
     with app.app_context():
         db.create_all()
@@ -48,7 +50,6 @@ def app():
             role="user"
         )
         
-        # Create test customers
         customer1 = Customer(
             name="Test Müşteri 1",
             address="Test Adres 1",
@@ -66,7 +67,6 @@ def app():
         db.session.add(customer2)
         db.session.commit()
         
-        # Create test invoices
         invoice1 = Invoice(
             customer_id=customer1.id,
             date=date(2024, 1, 15),
@@ -91,7 +91,6 @@ def app():
         db.session.add(invoice3)
         db.session.commit()
         
-        # Create test transactions
         transaction1 = Transaction(
             invoice_id=invoice1.id,
             amount=1000.0,
