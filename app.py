@@ -1,5 +1,5 @@
 from flask import Flask
-from models.user import db, User
+from models import db, User, Customer, Invoice, Transaction
 from routes.auth_routes import auth_bp
 from routes.user_routes import user_bp
 import os
