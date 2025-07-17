@@ -3,6 +3,7 @@ from datetime import date
 from services.user_service import UserService
 from services.accounting_service import AccountingService
 from services.invoice_service import InvoiceService
+from services.transaction_service import TransactionService
 from models.user import User, db
 from models.customer import Customer
 from models.invoice import Invoice
@@ -768,3 +769,509 @@ class TestInvoiceService:
             
             assert stats['total_invoices'] >= 4
             assert stats['paid_amount'] >= 2000
+
+
+class TestTransactionService:
+    
+    def test_create_transaction_success(self, app):
+        """Test successful transaction creation"""
+        with app.app_context():
+            customer = Customer(
+                name="Test Customer",
+                address="Test Address",
+                phone="123456789",
+                email="test@customer.com"
+            )
+            db.session.add(customer)
+            db.session.commit()
+            
+            invoice = Invoice(
+                customer_id=customer.id,
+                date=date(2024, 1, 15),
+                total_amount=1000.0,
+                status='pending'
+            )
+            db.session.add(invoice)
+            db.session.commit()
+            
+            result = TransactionService.create_transaction(
+                invoice_id=invoice.id,
+                amount=500.0,
+                date="2024-01-15",
+                type="payment"
+            )
+            
+            assert result['success'] is True
+            assert result['message'] == "Transaction created successfully"
+            assert result['transaction'] is not None
+            assert result['transaction']['amount'] == 500.0
+            assert result['transaction']['type'] == "payment"
+    
+    def test_create_transaction_invalid_invoice(self, app):
+        """Test transaction creation with invalid invoice ID"""
+        with app.app_context():
+            result = TransactionService.create_transaction(
+                invoice_id=999,
+                amount=500.0,
+                date="2024-01-15",
+                type="payment"
+            )
+            
+            assert result['success'] is False
+            assert result['message'] == "Invoice not found"
+            assert result['transaction'] is None
+    
+    def test_create_transaction_invalid_date(self, app):
+        """Test transaction creation with invalid date format"""
+        with app.app_context():
+            customer = Customer(
+                name="Test Customer",
+                address="Test Address",
+                phone="123456789",
+                email="test@customer.com"
+            )
+            db.session.add(customer)
+            db.session.commit()
+            
+            invoice = Invoice(
+                customer_id=customer.id,
+                date=date(2024, 1, 15),
+                total_amount=1000.0,
+                status='pending'
+            )
+            db.session.add(invoice)
+            db.session.commit()
+            
+            result = TransactionService.create_transaction(
+                invoice_id=invoice.id,
+                amount=500.0,
+                date="invalid-date",
+                type="payment"
+            )
+            
+            assert result['success'] is False
+            assert "Invalid date format" in result['message']
+            assert result['transaction'] is None
+    
+    def test_get_transaction_by_id(self, app):
+        """Test getting transaction by ID"""
+        with app.app_context():
+            customer = Customer(
+                name="Test Customer",
+                address="Test Address",
+                phone="123456789",
+                email="test@customer.com"
+            )
+            db.session.add(customer)
+            db.session.commit()
+            
+            invoice = Invoice(
+                customer_id=customer.id,
+                date=date(2024, 1, 15),
+                total_amount=1000.0,
+                status='pending'
+            )
+            db.session.add(invoice)
+            db.session.commit()
+            
+            transaction = Transaction(
+                invoice_id=invoice.id,
+                amount=500.0,
+                date=date(2024, 1, 15),
+                type="payment"
+            )
+            db.session.add(transaction)
+            db.session.commit()
+            
+            result = TransactionService.get_transaction_by_id(transaction.id)
+            
+            assert result is not None
+            assert result.amount == 500.0
+            assert result.type == "payment"
+    
+    def test_get_transaction_by_id_not_found(self, app):
+        """Test getting transaction with non-existent ID"""
+        with app.app_context():
+            result = TransactionService.get_transaction_by_id(999)
+            assert result is None
+    
+    def test_get_all_transactions(self, app):
+        """Test getting all transactions with pagination"""
+        with app.app_context():
+            customer = Customer(
+                name="Test Customer",
+                address="Test Address",
+                phone="123456789",
+                email="test@customer.com"
+            )
+            db.session.add(customer)
+            db.session.commit()
+            
+            invoice = Invoice(
+                customer_id=customer.id,
+                date=date(2024, 1, 15),
+                total_amount=1000.0,
+                status='pending'
+            )
+            db.session.add(invoice)
+            db.session.commit()
+            
+            for i in range(3):
+                transaction = Transaction(
+                    invoice_id=invoice.id,
+                    amount=100.0 + i * 50,
+                    date=date(2024, 1, 15),
+                    type=f"payment{i}"
+                )
+                db.session.add(transaction)
+            db.session.commit()
+            
+            result = TransactionService.get_all_transactions(page=1, per_page=2)
+            
+            assert result['success'] is True
+            assert 'transactions' in result
+            assert 'total' in result
+            assert 'pages' in result
+            assert result['current_page'] == 1
+            assert result['per_page'] == 2
+    
+    def test_get_transactions_by_invoice(self, app):
+        """Test getting transactions by invoice ID"""
+        with app.app_context():
+            customer = Customer(
+                name="Test Customer",
+                address="Test Address",
+                phone="123456789",
+                email="test@customer.com"
+            )
+            db.session.add(customer)
+            db.session.commit()
+            
+            invoice1 = Invoice(
+                customer_id=customer.id,
+                date=date(2024, 1, 15),
+                total_amount=1000.0,
+                status='pending'
+            )
+            invoice2 = Invoice(
+                customer_id=customer.id,
+                date=date(2024, 1, 16),
+                total_amount=2000.0,
+                status='pending'
+            )
+            db.session.add(invoice1)
+            db.session.add(invoice2)
+            db.session.commit()
+            
+            for i in range(2):
+                transaction = Transaction(
+                    invoice_id=invoice1.id,
+                    amount=100.0 + i * 50,
+                    date=date(2024, 1, 15),
+                    type=f"payment{i}"
+                )
+                db.session.add(transaction)
+            
+            transaction = Transaction(
+                invoice_id=invoice2.id,
+                amount=300.0,
+                date=date(2024, 1, 16),
+                type="payment"
+            )
+            db.session.add(transaction)
+            db.session.commit()
+            
+            result = TransactionService.get_transactions_by_invoice(invoice1.id)
+            
+            assert result['success'] is True
+            assert 'transactions' in result
+            assert 'invoice' in result
+            assert len(result['transactions']) == 2
+            assert result['invoice']['id'] == invoice1.id
+    
+    def test_get_transactions_by_invoice_not_found(self, app):
+        """Test getting transactions for non-existent invoice"""
+        with app.app_context():
+            result = TransactionService.get_transactions_by_invoice(999)
+            
+            assert result['success'] is False
+            assert result['message'] == "Invoice not found"
+            assert result['transactions'] == []
+    
+    def test_get_transactions_by_type(self, app):
+        """Test getting transactions by type"""
+        with app.app_context():
+            customer = Customer(
+                name="Test Customer",
+                address="Test Address",
+                phone="123456789",
+                email="test@customer.com"
+            )
+            db.session.add(customer)
+            db.session.commit()
+            
+            invoice = Invoice(
+                customer_id=customer.id,
+                date=date(2024, 1, 15),
+                total_amount=1000.0,
+                status='pending'
+            )
+            db.session.add(invoice)
+            db.session.commit()
+            
+            payment_transaction = Transaction(
+                invoice_id=invoice.id,
+                amount=100.0,
+                date=date(2024, 1, 15),
+                type="payment"
+            )
+            refund_transaction = Transaction(
+                invoice_id=invoice.id,
+                amount=50.0,
+                date=date(2024, 1, 15),
+                type="refund"
+            )
+            db.session.add(payment_transaction)
+            db.session.add(refund_transaction)
+            db.session.commit()
+            
+            result = TransactionService.get_transactions_by_type("payment")
+            
+            assert result['success'] is True
+            assert 'transactions' in result
+            assert result['type'] == "payment"
+            assert len(result['transactions']) >= 1
+            assert all(t['type'] == "payment" for t in result['transactions'])
+    
+    def test_update_transaction_success(self, app):
+        """Test successful transaction update"""
+        with app.app_context():
+            customer = Customer(
+                name="Test Customer",
+                address="Test Address",
+                phone="123456789",
+                email="test@customer.com"
+            )
+            db.session.add(customer)
+            db.session.commit()
+            
+            invoice = Invoice(
+                customer_id=customer.id,
+                date=date(2024, 1, 15),
+                total_amount=1000.0,
+                status='pending'
+            )
+            db.session.add(invoice)
+            db.session.commit()
+            
+            transaction = Transaction(
+                invoice_id=invoice.id,
+                amount=500.0,
+                date=date(2024, 1, 15),
+                type="payment"
+            )
+            db.session.add(transaction)
+            db.session.commit()
+            
+            result = TransactionService.update_transaction(
+                transaction.id,
+                amount=750.0,
+                type="refund"
+            )
+            
+            assert result['success'] is True
+            assert result['message'] == "Transaction updated successfully"
+            assert result['transaction']['amount'] == 750.0
+            assert result['transaction']['type'] == "refund"
+    
+    def test_update_transaction_not_found(self, app):
+        """Test updating non-existent transaction"""
+        with app.app_context():
+            result = TransactionService.update_transaction(999, amount=100.0)
+            
+            assert result['success'] is False
+            assert result['message'] == "Transaction not found"
+            assert result['transaction'] is None
+    
+    def test_update_transaction_invalid_invoice(self, app):
+        """Test updating transaction with invalid invoice ID"""
+        with app.app_context():
+            customer = Customer(
+                name="Test Customer",
+                address="Test Address",
+                phone="123456789",
+                email="test@customer.com"
+            )
+            db.session.add(customer)
+            db.session.commit()
+            
+            invoice = Invoice(
+                customer_id=customer.id,
+                date=date(2024, 1, 15),
+                total_amount=1000.0,
+                status='pending'
+            )
+            db.session.add(invoice)
+            db.session.commit()
+            
+            transaction = Transaction(
+                invoice_id=invoice.id,
+                amount=500.0,
+                date=date(2024, 1, 15),
+                type="payment"
+            )
+            db.session.add(transaction)
+            db.session.commit()
+            
+            result = TransactionService.update_transaction(
+                transaction.id,
+                invoice_id=999
+            )
+            
+            assert result['success'] is False
+            assert result['message'] == "Invalid invoice ID"
+    
+    def test_delete_transaction_success(self, app):
+        """Test successful transaction deletion"""
+        with app.app_context():
+            customer = Customer(
+                name="Test Customer",
+                address="Test Address",
+                phone="123456789",
+                email="test@customer.com"
+            )
+            db.session.add(customer)
+            db.session.commit()
+            
+            invoice = Invoice(
+                customer_id=customer.id,
+                date=date(2024, 1, 15),
+                total_amount=1000.0,
+                status='pending'
+            )
+            db.session.add(invoice)
+            db.session.commit()
+            
+            transaction = Transaction(
+                invoice_id=invoice.id,
+                amount=500.0,
+                date=date(2024, 1, 15),
+                type="payment"
+            )
+            db.session.add(transaction)
+            db.session.commit()
+            
+            transaction_id = transaction.id
+            
+            result = TransactionService.delete_transaction(transaction_id)
+            
+            assert result['success'] is True
+            assert result['message'] == "Transaction deleted successfully"
+            
+            # Verify deletion
+            deleted_transaction = TransactionService.get_transaction_by_id(transaction_id)
+            assert deleted_transaction is None
+    
+    def test_delete_transaction_not_found(self, app):
+        """Test deleting non-existent transaction"""
+        with app.app_context():
+            result = TransactionService.delete_transaction(999)
+            
+            assert result['success'] is False
+            assert result['message'] == "Transaction not found"
+    
+    def test_get_transaction_statistics(self, app):
+        """Test getting transaction statistics"""
+        with app.app_context():
+            # Create customer and invoice
+            customer = Customer(
+                name="Test Customer",
+                address="Test Address",
+                phone="123456789",
+                email="test@customer.com"
+            )
+            db.session.add(customer)
+            db.session.commit()
+            
+            invoice = Invoice(
+                customer_id=customer.id,
+                date=date(2024, 1, 15),
+                total_amount=1000.0,
+                status='pending'
+            )
+            db.session.add(invoice)
+            db.session.commit()
+            
+            transactions_data = [
+                {"amount": 100.0, "type": "payment"},
+                {"amount": 200.0, "type": "payment"},
+                {"amount": 50.0, "type": "refund"},
+            ]
+            
+            for data in transactions_data:
+                transaction = Transaction(
+                    invoice_id=invoice.id,
+                    amount=data["amount"],
+                    date=date(2024, 1, 15),
+                    type=data["type"]
+                )
+                db.session.add(transaction)
+            db.session.commit()
+            
+            result = TransactionService.get_transaction_statistics()
+            
+            assert result['success'] is True
+            assert 'statistics' in result
+            stats = result['statistics']
+            
+            assert 'total_transactions' in stats
+            assert 'total_amount' in stats
+            assert 'by_type' in stats
+            assert 'monthly' in stats
+            
+            assert stats['total_transactions'] >= 3
+            assert stats['total_amount'] >= 350.0
+    
+    def test_search_transactions(self, app):
+        """Test searching transactions"""
+        with app.app_context():
+            customer = Customer(
+                name="Test Customer",
+                address="Test Address",
+                phone="123456789",
+                email="test@customer.com"
+            )
+            db.session.add(customer)
+            db.session.commit()
+            
+            invoice = Invoice(
+                customer_id=customer.id,
+                date=date(2024, 1, 15),
+                total_amount=1000.0,
+                status='pending'
+            )
+            db.session.add(invoice)
+            db.session.commit()
+            
+            payment_transaction = Transaction(
+                invoice_id=invoice.id,
+                amount=100.0,
+                date=date(2024, 1, 15),
+                type="payment"
+            )
+            refund_transaction = Transaction(
+                invoice_id=invoice.id,
+                amount=50.0,
+                date=date(2024, 1, 15),
+                type="refund"
+            )
+            db.session.add(payment_transaction)
+            db.session.add(refund_transaction)
+            db.session.commit()
+            
+            result = TransactionService.search_transactions("payment")
+            
+            assert result['success'] is True
+            assert 'transactions' in result
+            assert result['query'] == "payment"
+            assert len(result['transactions']) >= 1

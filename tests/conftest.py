@@ -10,6 +10,7 @@ from routes.auth_routes import auth_bp
 from routes.user_routes import user_bp
 from routes.accounting_routes import accounting_bp
 from routes.invoice_routes import invoice_bp
+from routes.transaction_routes import transaction_bp
 from services.user_service import UserService
 from datetime import date
 
@@ -33,6 +34,7 @@ def app():
     app.register_blueprint(user_bp)
     app.register_blueprint(accounting_bp)
     app.register_blueprint(invoice_bp)
+    app.register_blueprint(transaction_bp)
     
     with app.app_context():
         db.create_all()
@@ -51,16 +53,16 @@ def app():
         )
         
         customer1 = Customer(
-            name="Test Müşteri 1",
-            address="Test Adres 1",
+            name="Test Customer 1",
+            address="Test Address 1",
             phone="555-0001",
-            email="musteri1@test.com"
+            email="customer1@test.com"
         )
         customer2 = Customer(
-            name="Test Müşteri 2", 
-            address="Test Adres 2",
+            name="Test Customer 2", 
+            address="Test Address 2",
             phone="555-0002",
-            email="musteri2@test.com"
+            email="customer2@test.com"
         )
         
         db.session.add(customer1)
@@ -191,8 +193,8 @@ def admin_headers(client):
 @pytest.fixture
 def test_customer_data():
     return {
-        'name': 'Test Müşteri',
-        'address': 'Test Adres',
+        'name': 'Test Customer',
+        'address': 'Test Address',
         'phone': '555-0000',
         'email': 'test@test.com'
     }

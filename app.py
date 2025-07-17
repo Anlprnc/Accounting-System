@@ -4,6 +4,7 @@ from routes.auth_routes import auth_bp
 from routes.user_routes import user_bp
 from routes.accounting_routes import accounting_bp
 from routes.invoice_routes import invoice_bp
+from routes.transaction_routes import transaction_bp
 import os
 
 app = Flask(__name__)
@@ -18,6 +19,7 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(user_bp)
 app.register_blueprint(accounting_bp)
 app.register_blueprint(invoice_bp)
+app.register_blueprint(transaction_bp)
 
 with app.app_context():
     db.create_all()

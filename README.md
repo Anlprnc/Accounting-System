@@ -2,7 +2,7 @@
 
 ## 📋 Overview
 
-Modern Flask-based accounting management system. Features JWT authentication, financial reporting, customer analysis, and cash flow tracking.
+Modern Flask-based accounting management system with comprehensive transaction management. Features JWT authentication, financial reporting, customer analysis, cash flow tracking, and complete transaction CRUD operations with advanced filtering and statistics.
 
 ## 🚀 Features
 
@@ -18,6 +18,15 @@ Modern Flask-based accounting management system. Features JWT authentication, fi
 - ✅ Invoice status analysis
 - ✅ Customer-based invoice reports
 - ✅ Payment status tracking
+
+### 💳 **Transaction Management**
+- ✅ Complete CRUD operations for transactions
+- ✅ Transaction creation and updates
+- ✅ Transaction search and filtering
+- ✅ Transaction statistics and analytics
+- ✅ Type-based transaction categorization
+- ✅ Invoice-based transaction tracking
+- ✅ Paginated transaction listings
 
 ### 👥 **Customer Analysis**
 - ✅ Customer-based financial analysis
@@ -212,6 +221,92 @@ GET /api/accounting/profit-loss?start_date=2024-01-01&end_date=2024-12-31
 }
 ```
 
+### **💳 Transaction Management**
+```bash
+# Get all transactions (paginated)
+GET /api/transactions/
+GET /api/transactions/?page=1&per_page=10
+
+# Response:
+{
+  "success": true,
+  "transactions": [
+    {
+      "id": 1,
+      "invoice_id": 5,
+      "amount": 1500.0,
+      "date": "2024-01-15",
+      "type": "payment",
+      "created_at": "2024-01-15T10:30:00",
+      "updated_at": "2024-01-15T10:30:00"
+    }
+  ],
+  "total": 25,
+  "pages": 3,
+  "current_page": 1,
+  "per_page": 10
+}
+
+# Get specific transaction
+GET /api/transactions/1
+
+# Create new transaction
+POST /api/transactions/
+{
+  "invoice_id": 5,
+  "amount": 1500.0,
+  "date": "2024-01-15",
+  "type": "payment"
+}
+
+# Update transaction
+PUT /api/transactions/1
+{
+  "amount": 1750.0,
+  "type": "refund"
+}
+
+# Delete transaction
+DELETE /api/transactions/1
+
+# Get transactions by invoice
+GET /api/transactions/by-invoice/5
+
+# Get transactions by type
+GET /api/transactions/by-type/payment
+
+# Search transactions
+GET /api/transactions/search?q=payment
+
+# Get transaction statistics
+GET /api/transactions/stats
+
+# Response:
+{
+  "success": true,
+  "statistics": {
+    "total_transactions": 150,
+    "total_amount": 75000.0,
+    "by_type": {
+      "payment": {
+        "count": 120,
+        "total_amount": 65000.0
+      },
+      "refund": {
+        "count": 30,
+        "total_amount": 10000.0
+      }
+    },
+    "monthly": {
+      "2024-01": {
+        "count": 25,
+        "total_amount": 12500.0
+      }
+    }
+  }
+}
+```
+
 ### **📊 Dashboard**
 ```bash
 # General dashboard information
@@ -293,6 +388,34 @@ summary = requests.get(
     headers=headers
 )
 print(summary.json())
+
+# Create a new transaction
+transaction_data = {
+    'invoice_id': 5,
+    'amount': 1500.0,
+    'date': '2024-01-15',
+    'type': 'payment'
+}
+create_response = requests.post(
+    'http://localhost:5000/api/transactions/',
+    json=transaction_data,
+    headers=headers
+)
+print(create_response.json())
+
+# Get transaction statistics
+stats_response = requests.get(
+    'http://localhost:5000/api/transactions/stats',
+    headers=headers
+)
+print(stats_response.json())
+
+# Search transactions
+search_response = requests.get(
+    'http://localhost:5000/api/transactions/search?q=payment',
+    headers=headers
+)
+print(search_response.json())
 ```
 
 ### **cURL Examples**
@@ -308,6 +431,38 @@ curl -X GET http://localhost:5000/api/accounting/summary \
 
 # Monthly report
 curl -X GET http://localhost:5000/api/accounting/monthly-report/2024/12 \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# Create transaction
+curl -X POST http://localhost:5000/api/transactions/ \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{"invoice_id":5,"amount":1500.0,"date":"2024-01-15","type":"payment"}'
+
+# Get all transactions
+curl -X GET http://localhost:5000/api/transactions/ \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# Get transactions by invoice
+curl -X GET http://localhost:5000/api/transactions/by-invoice/5 \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# Search transactions
+curl -X GET http://localhost:5000/api/transactions/search?q=payment \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# Get transaction statistics
+curl -X GET http://localhost:5000/api/transactions/stats \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# Update transaction
+curl -X PUT http://localhost:5000/api/transactions/1 \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '{"amount":1750.0,"type":"refund"}'
+
+# Delete transaction
+curl -X DELETE http://localhost:5000/api/transactions/1 \
   -H "Authorization: Bearer YOUR_TOKEN"
 ```
 
@@ -325,6 +480,21 @@ python -m pytest tests/test_accounting_service.py -v
 
 # Accounting routes tests
 python -m pytest tests/test_accounting_routes.py -v
+
+# Transaction services tests
+python -m pytest tests/test_services.py::TestTransactionService -v
+
+# Transaction routes tests
+python -m pytest tests/test_transaction_routes.py -v
+
+# All transaction tests
+python -m pytest tests/test_transaction_routes.py tests/test_services.py::TestTransactionService -v
+
+# User and authentication tests
+python -m pytest tests/test_user_routes.py tests/test_auth_routes.py -v
+
+# Invoice tests
+python -m pytest tests/test_invoice_routes.py -v
 
 # Test runner script
 python run_tests.py

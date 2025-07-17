@@ -17,12 +17,11 @@ def register():
                     'message': f'{field} is required'
                 }), 400
         
-        # Her kullanıcı otomatik olarak 'user' rolünü alır
         result = UserService.create_user(
             fullname=data['fullname'],
             email=data['email'],
             password=data['password'],
-            role='user'  # Otomatik olarak user rolü atanır
+            role='user'
         )
         
         if result['success']:
