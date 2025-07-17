@@ -1,26 +1,18 @@
-#!/usr/bin/env python3
-"""
-Test runner script for the Accounting application.
-"""
 import subprocess
 import sys
 import os
 
 def run_tests():
-    """Run all tests with pytest."""
     print("🧪 Running tests for Accounting application...")
     print("=" * 50)
     
-    # Ensure we're in the project directory
     project_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(project_dir)
     
-    # Install test dependencies if needed
     print("📦 Installing test dependencies...")
     subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], 
                   capture_output=True)
     
-    # Run pytest with coverage
     print("\n🚀 Running tests...")
     cmd = [
         sys.executable, "-m", "pytest",
@@ -48,7 +40,6 @@ def run_tests():
         return 1
 
 def run_specific_test(test_path):
-    """Run specific test file or test method."""
     print(f"🎯 Running specific test: {test_path}")
     print("=" * 50)
     
@@ -65,11 +56,9 @@ def run_specific_test(test_path):
 
 if __name__ == "__main__":
     if len(sys.argv) > 1:
-        # Run specific test
         test_path = sys.argv[1]
         exit_code = run_specific_test(test_path)
     else:
-        # Run all tests
         exit_code = run_tests()
     
     sys.exit(exit_code) 
